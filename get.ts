@@ -1,3 +1,5 @@
+import { formatData } from "./util";
+
 function doGet(e) {
   const params = e.parameter;
 
@@ -42,6 +44,16 @@ function register(params) {
       const index = indices[i];
       if (params[index]) {
         sheet.getRange(last_row + 1, i + 1).setValue(params[index]);
+      } else if (index === "status") {
+        sheet.getRange(last_row + 1, i + 1).setValue("active");
+      } else if (index === "created_at") {
+        const now = new Date();
+        const time = Utilities.formatDate(
+          now,
+          "Asia/Tokyo",
+          "yyyy/MM/dd HH:mm:ss"
+        );
+        sheet.getRange(last_row + 1, i + 1).setValue(time);
       }
     }
     return { success: true };
@@ -66,10 +78,9 @@ function search(params) {
   const result = [];
   for (const item of sheetData) {
     if (item[indexOfCarNumber] == targetNumber) {
-      result.push(item);
+      result.push(formatData(item, sheetData[0]));
     }
-    Logger.log(item[indexOfCarNumber]);
   }
 
-  return { search: result, indexOfCarNumber, targetNumber };
+  return { success: true, result, targetNumber };
 }
