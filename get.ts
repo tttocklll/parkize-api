@@ -4,6 +4,12 @@ function doGet(e) {
   const params = e.parameter;
 
   const mode = params.mode;
+  if (!mode) {
+    return JSON.stringify({
+      success: false,
+      error: `モードを指定してください`,
+    });
+  }
 
   switch (mode) {
     case "register":
@@ -16,8 +22,17 @@ function doGet(e) {
       return ContentService.createTextOutput(
         JSON.stringify(flipStatus(params))
       );
+    case "delete":
+      return ContentService.createTextOutput(
+        JSON.stringify(deleteData(params))
+      );
     default:
-      break;
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          success: false,
+          error: `モード "${mode}" は存在しません`,
+        })
+      );
   }
 }
 
@@ -65,86 +80,156 @@ function register(params) {
     return { success: true };
   } catch (error) {
     Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
   }
 }
 
 function search(params) {
-  const targetNumber = params.car_number;
+  try {
+    const targetNumber = params.car_number;
 
-  const sheet_id =
-    PropertiesService.getScriptProperties().getProperty("SHEET_ID");
-  // TODO: シートが複数になっても動作するように
-  const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-  const last_col = sheet.getLastColumn();
-  const last_row = sheet.getLastRow();
-  const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const sheet_id =
+      PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+    // TODO: シートが複数になっても動作するように
+    const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
+    const last_col = sheet.getLastColumn();
+    const last_row = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
 
-  const indexOfCarNumber = sheetData[0].indexOf("car_number");
+    const indexOfCarNumber = sheetData[0].indexOf("car_number");
 
-  const result = [];
-  for (const item of sheetData) {
-    if (item[indexOfCarNumber] == targetNumber) {
-      result.push(formatData(item, sheetData[0]));
+    const result = [];
+    for (const item of sheetData) {
+      if (item[indexOfCarNumber] == targetNumber) {
+        result.push(formatData(item, sheetData[0]));
+      }
     }
-  }
 
-  return { success: true, result, targetNumber };
+    return { success: true, result, targetNumber };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
 }
 
 function listAll() {
-  const sheet_id =
-    PropertiesService.getScriptProperties().getProperty("SHEET_ID");
-  // TODO: シートが複数になっても動作するように
-  const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-  const last_col = sheet.getLastColumn();
-  const last_row = sheet.getLastRow();
-  const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+  try {
+    const sheet_id =
+      PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+    // TODO: シートが複数になっても動作するように
+    const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
+    const last_col = sheet.getLastColumn();
+    const last_row = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
 
-  const result = [];
-  for (const item of sheetData) {
-    if (item[0]) result.push(formatData(item, sheetData[0]));
+    const result = [];
+    for (const item of sheetData) {
+      if (item[0]) result.push(formatData(item, sheetData[0]));
+    }
+
+    return { success: true, result: result.slice(1) };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
   }
-
-  return { success: true, result: result.slice(1) };
 }
 
 function flipStatus(params) {
-  const targetCreatedAt = params.created_at;
-  const targetCarNumber = params.car_number;
+  try {
+    const targetCreatedAt = params.created_at;
+    const targetCarNumber = params.car_number;
 
-  const sheet_id =
-    PropertiesService.getScriptProperties().getProperty("SHEET_ID");
-  // TODO: シートが複数になっても動作するように
-  const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-  const last_col = sheet.getLastColumn();
-  const last_row = sheet.getLastRow();
-  const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const sheet_id =
+      PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+    // TODO: シートが複数になっても動作するように
+    const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
+    const last_col = sheet.getLastColumn();
+    const last_row = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
 
-  const indexOfCarNumber = sheetData[0].indexOf("car_number");
-  const indexOfCreatedAt = sheetData[0].indexOf("created_at");
-  const indexOfStatus = sheetData[0].indexOf("status");
+    const indexOfCarNumber = sheetData[0].indexOf("car_number");
+    const indexOfCreatedAt = sheetData[0].indexOf("created_at");
+    const indexOfStatus = sheetData[0].indexOf("status");
 
-  for (let i = 0; i < sheetData.length; i++) {
-    if (
-      sheetData[i][indexOfCarNumber] == targetCarNumber &&
-      new Date(sheetData[i][indexOfCreatedAt]).getTime() ===
-        new Date(targetCreatedAt).getTime()
-    ) {
-      const targetCell = sheet.getRange(i + 1, indexOfStatus + 1);
-      targetCell.setValue(
-        targetCell.getValue() === "未出庫" ? "出庫済" : "未出庫"
-      );
-      return {
-        success: true,
-        result: formatData(
-          sheet.getRange(1, 1, last_row, last_col).getValues()[i],
-          sheetData[0]
-        ),
-      };
+    for (let i = 0; i < sheetData.length; i++) {
+      if (
+        sheetData[i][indexOfCarNumber] == targetCarNumber &&
+        new Date(sheetData[i][indexOfCreatedAt]).getTime() ===
+          new Date(targetCreatedAt).getTime()
+      ) {
+        const targetCell = sheet.getRange(i + 1, indexOfStatus + 1);
+        targetCell.setValue(
+          targetCell.getValue() === "未出庫" ? "出庫済" : "未出庫"
+        );
+        return {
+          success: true,
+          result: formatData(
+            sheet.getRange(1, 1, last_row, last_col).getValues()[i],
+            sheetData[0]
+          ),
+        };
+      }
     }
+    return {
+      success: false,
+      error: "該当するデータが見つかりませんでした",
+    };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
   }
-  return {
-    success: false,
-    error: "該当するデータが見つかりませんでした",
-  };
+}
+
+function deleteData(params) {
+  try {
+    const targetCreatedAt = params.created_at;
+    const targetCarNumber = params.car_number;
+
+    const sheet_id =
+      PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+    // TODO: シートが複数になっても動作するように
+    const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
+    const last_col = sheet.getLastColumn();
+    const last_row = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+
+    const indexOfCarNumber = sheetData[0].indexOf("car_number");
+    const indexOfCreatedAt = sheetData[0].indexOf("created_at");
+    const indexOfStatus = sheetData[0].indexOf("status");
+
+    for (let i = 0; i < sheetData.length; i++) {
+      if (
+        sheetData[i][indexOfCarNumber] == targetCarNumber &&
+        new Date(sheetData[i][indexOfCreatedAt]).getTime() ===
+          new Date(targetCreatedAt).getTime()
+      ) {
+        sheet.deleteRow(i + 1);
+        return {
+          success: true,
+        };
+      }
+    }
+    return {
+      success: false,
+      error: "該当するデータが見つかりませんでした",
+    };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
 }
