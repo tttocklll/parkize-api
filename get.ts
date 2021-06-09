@@ -49,14 +49,18 @@ function register(params) {
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
     const indexOfName = sheetData[0].indexOf("name");
 
-    for (const data of sheetData) {
-      if (
-        data[indexOfCarNumber] == params.car_number &&
-        data[indexOfName] == params.name
-      ) {
+    if (!params.forceRegister) {
+      const sameNumbers = [];
+      for (const data of sheetData) {
+        if (data[indexOfCarNumber] == params.car_number) {
+          sameNumbers.push(formatData(data, indices));
+        }
+      }
+      if (sameNumbers.length > 0) {
         return {
           success: false,
           error: "同じナンバーと名前の人が登録されています",
+          sameNumbers,
         };
       }
     }
