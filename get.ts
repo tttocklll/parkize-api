@@ -162,6 +162,7 @@ function flipStatus(params) {
 
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
     const indexOfCreatedAt = sheetData[0].indexOf("created_at");
+    const indexOfLeftAt = sheetData[0].indexOf("left_at");
     const indexOfStatus = sheetData[0].indexOf("status");
 
     for (let i = 0; i < sheetData.length; i++) {
@@ -171,15 +172,22 @@ function flipStatus(params) {
           new Date(targetCreatedAt).getTime()
       ) {
         const targetCell = sheet.getRange(i + 1, indexOfStatus + 1);
-        targetCell.setValue(
-          targetCell.getValue() === "未出庫" ? "出庫済" : "未出庫"
-        );
+        const value = targetCell.getValue();
+        if (value === "未出庫") {
+          const now = new Date();
+          const time = Utilities.formatDate(
+            now,
+            "Asia/Tokyo",
+            "yyyy/MM/dd HH:mm:ss"
+          );
+          sheet.getRange(i + 1, indexOfLeftAt + 1).setValue(time);
+          targetCell.setValue("出庫済");
+        } else {
+          sheet.getRange(i + 1, indexOfLeftAt + 1).setValue("");
+          targetCell.setValue("未出庫");
+        }
         return {
           success: true,
-          result: formatData(
-            sheet.getRange(1, 1, last_row, last_col).getValues()[i],
-            sheetData[0]
-          ),
         };
       }
     }
