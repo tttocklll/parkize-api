@@ -26,6 +26,10 @@ function doGet(e) {
       return ContentService.createTextOutput(
         JSON.stringify(deleteData(params))
       );
+    case "get_all_events":
+      return ContentService.createTextOutput(
+        JSON.stringify(getAllEvents(params))
+      );
     default:
       return ContentService.createTextOutput(
         JSON.stringify({
@@ -237,6 +241,30 @@ function deleteData(params) {
       success: false,
       error: "該当するデータが見つかりませんでした",
     };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
+}
+
+function getAllEvents(params) {
+  try {
+    const dbSheetId =
+      PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
+    const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("event");
+    const last_col = sheet.getLastColumn();
+    const last_row = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+
+    const result = [];
+    for (const item of sheetData) {
+      if (item[0]) result.push(formatData(item, sheetData[0]));
+    }
+
+    return { success: true, result: result.slice(1) };
   } catch (error) {
     Logger.log(error);
     return {
