@@ -32,6 +32,10 @@ function doGet(e) {
       );
     case "login":
       return ContentService.createTextOutput(JSON.stringify(login(params)));
+    case "get_session":
+      return ContentService.createTextOutput(
+        JSON.stringify(getSession(params))
+      );
     default:
       return ContentService.createTextOutput(
         JSON.stringify({
@@ -309,6 +313,51 @@ function login(params) {
     return {
       success: false,
       error: "イベントが存在しません",
+    };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
+}
+
+function getSession(params) {
+  try {
+    const sessionId = params.session_id;
+
+    const dbSheetId =
+      PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
+    const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("session");
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    const indices = sheetData[0];
+
+    const indexOfSessionId = indices.indexOf("session_id");
+    const indexOfExpireAt = indices.indexOf("expire_at");
+    const indexOfEventName = indices.indexOf("event_name");
+
+    const now = new Date();
+    for (const session of sheetData) {
+      if (session[indexOfSessionId] === sessionId) {
+        const expireAt = new Date(session[indexOfExpireAt]);
+        if (now < expireAt) {
+          return {
+            success: true,
+            event_name: session[indexOfEventName],
+          };
+        }
+        return {
+          success: false,
+          error: "タイムアウトしました。再ログインしてください。",
+        };
+      }
+    }
+    return {
+      success: false,
+      error: "ログインしてください",
     };
   } catch (error) {
     Logger.log(error);
