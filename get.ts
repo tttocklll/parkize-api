@@ -1,4 +1,4 @@
-import { formatData } from "./util";
+import { formatData, createSession } from "./util";
 
 function doGet(e) {
   const params = e.parameter;
@@ -30,6 +30,8 @@ function doGet(e) {
       return ContentService.createTextOutput(
         JSON.stringify(getAllEvents(params))
       );
+    case "login":
+      return ContentService.createTextOutput(JSON.stringify(login(params)));
     default:
       return ContentService.createTextOutput(
         JSON.stringify({
@@ -46,9 +48,9 @@ function register(params) {
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
     const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
     const indices = sheetData[0];
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
     const indexOfName = sheetData[0].indexOf("name");
@@ -72,9 +74,9 @@ function register(params) {
     for (let i = 0; i < indices.length; i++) {
       const index = indices[i];
       if (params[index]) {
-        sheet.getRange(last_row + 1, i + 1).setValue(params[index]);
+        sheet.getRange(lastRow + 1, i + 1).setValue(params[index]);
       } else if (index === "status") {
-        sheet.getRange(last_row + 1, i + 1).setValue("未出庫");
+        sheet.getRange(lastRow + 1, i + 1).setValue("未出庫");
       } else if (index === "created_at") {
         const now = new Date();
         const time = Utilities.formatDate(
@@ -82,7 +84,7 @@ function register(params) {
           "Asia/Tokyo",
           "yyyy/MM/dd HH:mm:ss"
         );
-        sheet.getRange(last_row + 1, i + 1).setValue(time);
+        sheet.getRange(lastRow + 1, i + 1).setValue(time);
       }
     }
     return { success: true };
@@ -103,9 +105,9 @@ function search(params) {
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
     const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
 
@@ -132,9 +134,9 @@ function listAll() {
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
     const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const result = [];
     for (const item of sheetData) {
@@ -160,9 +162,9 @@ function flipStatus(params) {
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
     const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
     const indexOfCreatedAt = sheetData[0].indexOf("created_at");
@@ -217,13 +219,12 @@ function deleteData(params) {
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
     const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
     const indexOfCreatedAt = sheetData[0].indexOf("created_at");
-    const indexOfStatus = sheetData[0].indexOf("status");
 
     for (let i = 0; i < sheetData.length; i++) {
       if (
@@ -255,9 +256,9 @@ function getAllEvents(params) {
     const dbSheetId =
       PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
     const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("event");
-    const last_col = sheet.getLastColumn();
-    const last_row = sheet.getLastRow();
-    const sheetData = sheet.getRange(1, 1, last_row, last_col).getValues();
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const result = [];
     for (const item of sheetData) {
@@ -265,6 +266,50 @@ function getAllEvents(params) {
     }
 
     return { success: true, result: result.slice(1) };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
+}
+
+function login(params) {
+  const password = params.password;
+  const targetEventName = params.event_name;
+
+  try {
+    const dbSheetId =
+      PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
+    const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("event");
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+
+    const indexOfEventName = sheetData[0].indexOf("event_name");
+    const indexOfPassword = sheetData[0].indexOf("password");
+
+    for (const event of sheetData) {
+      if (event[indexOfEventName] === targetEventName) {
+        if (event[indexOfPassword] === password) {
+          const sessionId = createSession(targetEventName);
+          return {
+            success: true,
+            login: true,
+            sessionId,
+          };
+        }
+        return {
+          success: false,
+          error: "パスワードが間違っています",
+        };
+      }
+    }
+    return {
+      success: false,
+      error: "イベントが存在しません",
+    };
   } catch (error) {
     Logger.log(error);
     return {
