@@ -1,4 +1,4 @@
-import { formatData, createSession } from "./util";
+import { formatData, createSession, deleteEventFromEventList, deleteEventFromUserData, } from "./util";
 
 function doGet(e) {
   const params = e.parameter;
@@ -17,7 +17,7 @@ function doGet(e) {
     case "search":
       return ContentService.createTextOutput(JSON.stringify(search(params)));
     case "list_all":
-      return ContentService.createTextOutput(JSON.stringify(listAll()));
+      return ContentService.createTextOutput(JSON.stringify(listAll(params)));
     case "flip_status":
       return ContentService.createTextOutput(
         JSON.stringify(flipStatus(params))
@@ -35,6 +35,14 @@ function doGet(e) {
     case "get_session":
       return ContentService.createTextOutput(
         JSON.stringify(getSession(params))
+      );
+    case "create_event":
+      return ContentService.createTextOutput(
+        JSON.stringify(createEvent(params))
+      );
+    case "delete_event":
+      return ContentService.createTextOutput(
+        JSON.stringify(deleteEvent(params))
       );
     default:
       return ContentService.createTextOutput(
@@ -57,12 +65,15 @@ function register(params) {
     const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
     const indices = sheetData[0];
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
-    const indexOfName = sheetData[0].indexOf("name");
+    const indexOfEventName = sheetData[0].indexOf("event_name");
 
     if (!params.forceRegister) {
       const sameNumbers = [];
       for (const data of sheetData) {
-        if (data[indexOfCarNumber] == params.car_number) {
+        if (
+          data[indexOfCarNumber] == params.car_number &&
+          data[indexOfEventName] === params.event_name
+        ) {
           sameNumbers.push(formatData(data, indices));
         }
       }
@@ -104,6 +115,7 @@ function register(params) {
 function search(params) {
   try {
     const targetNumber = params.car_number;
+    const targetEventName = params.event_name;
 
     const sheet_id =
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
@@ -114,10 +126,14 @@ function search(params) {
     const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
     const indexOfCarNumber = sheetData[0].indexOf("car_number");
+    const indexOfEventName = sheetData[0].indexOf("event_name");
 
     const result = [];
     for (const item of sheetData) {
-      if (item[indexOfCarNumber] == targetNumber) {
+      if (
+        item[indexOfCarNumber] == targetNumber &&
+        item[indexOfEventName] === targetEventName
+      ) {
         result.push(formatData(item, sheetData[0]));
       }
     }
@@ -132,8 +148,10 @@ function search(params) {
   }
 }
 
-function listAll() {
+function listAll(params) {
   try {
+    const targetEventName = params.event_name;
+
     const sheet_id =
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
     // TODO: シートが複数になっても動作するように
@@ -142,12 +160,16 @@ function listAll() {
     const lastRow = sheet.getLastRow();
     const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
+    const indexOfEventName = sheetData[0].indexOf("event_name");
+
     const result = [];
     for (const item of sheetData) {
-      if (item[0]) result.push(formatData(item, sheetData[0]));
+      if (item[indexOfEventName] === targetEventName) {
+        result.push(formatData(item, sheetData[0]));
+      }
     }
 
-    return { success: true, result: result.slice(1) };
+    return { success: true, result, targetEventName };
   } catch (error) {
     Logger.log(error);
     return {
@@ -358,6 +380,62 @@ function getSession(params) {
     return {
       success: false,
       error: "ログインしてください",
+    };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
+}
+
+function createEvent(params) {
+  const eventName = params.event_name;
+  const password = params.password;
+
+  try {
+    const dbSheetId =
+      PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
+    const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("event");
+    const lastCol = sheet.getLastColumn();
+    const lastRow = sheet.getLastRow();
+    const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    const indices = sheetData[0];
+
+    const indexOfPassword = indices.indexOf("password");
+    const indexOfEventName = indices.indexOf("event_name");
+
+    for (const event of sheetData) {
+      if (event[indexOfEventName] === eventName) {
+        return {
+          success: false,
+          error: "同じ名前のイベントがあります",
+        };
+      }
+    }
+
+    sheet.getRange(lastRow + 1, indexOfEventName + 1).setValue(eventName);
+    sheet.getRange(lastRow + 1, indexOfPassword + 1).setValue(password);
+
+    return { success: true };
+  } catch (error) {
+    Logger.log(error);
+    return {
+      success: false,
+      error,
+    };
+  }
+}
+
+function deleteEvent(params) {
+  const eventName = params.event_name;
+  try {
+    deleteEventFromEventList(eventName);
+    const deleteCount = deleteEventFromUserData(eventName);
+    return {
+      success: true,
+      deleteCount,
     };
   } catch (error) {
     Logger.log(error);

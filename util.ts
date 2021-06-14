@@ -69,3 +69,43 @@ export function createSession(eventName: string) {
     );
   }
 }
+
+export function deleteEventFromEventList(eventName: string) {
+  const dbSheetId =
+    PropertiesService.getScriptProperties().getProperty("DATABASE_SHEET_ID");
+  const sheet = SpreadsheetApp.openById(dbSheetId).getSheetByName("event");
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  const indices = sheetData[0];
+
+  const indexOfEventName = indices.indexOf("event_name");
+
+  for (let i = 0; i < sheetData.length; i++) {
+    if (sheetData[i][indexOfEventName] === eventName) {
+      sheet.deleteRow(i + 1);
+      return {
+        success: true,
+      };
+    }
+  }
+}
+
+export function deleteEventFromUserData(eventName: string) {
+  const sheet_id =
+    PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+  const sheet = SpreadsheetApp.openById(sheet_id).getSheets()[0];
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const sheetData = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  const indexOfEventName = sheetData[0].indexOf("event_name");
+
+  let deleteCount = 0;
+  for (let i = 0; i < sheetData.length; i++) {
+    if (sheetData[i][indexOfEventName] === eventName) {
+      sheet.deleteRow(i + 1);
+      deleteCount++;
+    }
+  }
+  return deleteCount;
+}
