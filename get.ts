@@ -1,4 +1,4 @@
-import { formatData, createSession, deleteEventFromEventList, deleteEventFromUserData, } from "./util";
+import { formatData, createSession, deleteEventFromEventList, deleteEventFromUserData, formatCarNumber} from "./util";
 
 function doGet(e) {
   const params = e.parameter;
@@ -55,6 +55,7 @@ function doGet(e) {
 }
 
 function register(params) {
+  const targetCarNumber = formatCarNumber(params.car_number);
   try {
     const sheet_id =
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
@@ -71,7 +72,7 @@ function register(params) {
       const sameNumbers = [];
       for (const data of sheetData) {
         if (
-          data[indexOfCarNumber] == params.car_number &&
+          data[indexOfCarNumber] === targetCarNumber &&
           data[indexOfEventName] === params.event_name
         ) {
           sameNumbers.push(formatData(data, indices));
@@ -88,7 +89,10 @@ function register(params) {
 
     for (let i = 0; i < indices.length; i++) {
       const index = indices[i];
-      if (params[index]) {
+      if (index === "car_number"){
+        sheet.getRange(lastRow + 1, i + 1).setValue(targetCarNumber);
+      }
+      else if (params[index]) {
         sheet.getRange(lastRow + 1, i + 1).setValue(params[index]);
       } else if (index === "status") {
         sheet.getRange(lastRow + 1, i + 1).setValue("未出庫");
@@ -114,7 +118,7 @@ function register(params) {
 
 function search(params) {
   try {
-    const targetNumber = params.car_number;
+    const targetNumber = formatCarNumber(params.car_number);
     const targetEventName = params.event_name;
 
     const sheet_id =
@@ -131,7 +135,7 @@ function search(params) {
     const result = [];
     for (const item of sheetData) {
       if (
-        item[indexOfCarNumber] == targetNumber &&
+        item[indexOfCarNumber] === targetNumber &&
         item[indexOfEventName] === targetEventName
       ) {
         result.push(formatData(item, sheetData[0]));
@@ -182,7 +186,7 @@ function listAll(params) {
 function flipStatus(params) {
   try {
     const targetCreatedAt = params.created_at;
-    const targetCarNumber = params.car_number;
+    const targetCarNumber = formatCarNumber(params.car_number);
 
     const sheet_id =
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
@@ -199,7 +203,7 @@ function flipStatus(params) {
 
     for (let i = 0; i < sheetData.length; i++) {
       if (
-        sheetData[i][indexOfCarNumber] == targetCarNumber &&
+        sheetData[i][indexOfCarNumber] === targetCarNumber &&
         new Date(sheetData[i][indexOfCreatedAt]).getTime() ===
           new Date(targetCreatedAt).getTime()
       ) {
@@ -239,7 +243,7 @@ function flipStatus(params) {
 function deleteData(params) {
   try {
     const targetCreatedAt = params.created_at;
-    const targetCarNumber = params.car_number;
+    const targetCarNumber = formatCarNumber(params.car_number);
 
     const sheet_id =
       PropertiesService.getScriptProperties().getProperty("SHEET_ID");
@@ -254,7 +258,7 @@ function deleteData(params) {
 
     for (let i = 0; i < sheetData.length; i++) {
       if (
-        sheetData[i][indexOfCarNumber] == targetCarNumber &&
+        sheetData[i][indexOfCarNumber] === targetCarNumber &&
         new Date(sheetData[i][indexOfCreatedAt]).getTime() ===
           new Date(targetCreatedAt).getTime()
       ) {

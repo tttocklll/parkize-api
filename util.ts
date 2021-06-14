@@ -109,3 +109,7 @@ export function deleteEventFromUserData(eventName: string) {
   }
   return deleteCount;
 }
+
+export function formatCarNumber(carNumber: string) {
+  return `0000${carNumber}`.slice(-4);
+}
