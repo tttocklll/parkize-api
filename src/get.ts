@@ -91,9 +91,6 @@ function register(params) {
       const index = indices[i];
       if (index === "car_number"){
         sheet.getRange(lastRow + 1, i + 1).setValue(targetCarNumber);
-      }
-      else if (params[index]) {
-        sheet.getRange(lastRow + 1, i + 1).setValue(params[index]);
       } else if (index === "status") {
         sheet.getRange(lastRow + 1, i + 1).setValue("未出庫");
       } else if (index === "created_at") {
@@ -104,6 +101,8 @@ function register(params) {
           "yyyy/MM/dd HH:mm:ss"
         );
         sheet.getRange(lastRow + 1, i + 1).setValue(time);
+      } else if (params[index]) {
+        sheet.getRange(lastRow + 1, i + 1).setValue(params[index]);
       }
     }
     return { success: true };
